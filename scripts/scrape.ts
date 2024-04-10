@@ -1,6 +1,6 @@
 import axios from "axios";
 import * as cheerio from "cheerio";
-
+import { encode } from 'gpt-3-encoder';
 
 const BASE_URL = "https://blog.samaltman.com/";
 
@@ -34,3 +34,8 @@ getLinks()
     .catch((error) => {
         console.error("Error:", error);
     });
+
+const getEssay = async (url: string, title: string) => {
+    const html = await axios.get('${BASE_URL}${url}');
+    const $ = cheerio.load(html.data);
+}
