@@ -1,33 +1,45 @@
-import axios from "axios";
-import * as Cheerio from "cheerio";
-import { encode } from "gpt-3-encoder";
+import axios from 'axios';
+import * as cheerio from 'cheerio';
 
-const BASE_URL = "https://blog.samaltman.com"
+interface SamEssay {
+  title: string;
+  url: string;
+  content: string;
+}
 
-const getTitles = async () => {
-    const html = await axios.get(BASE_URL); 
-    const $ = Cheerio.load(html.data);
-    const postTitle = $("h2");
-    const linksArr: { url: string; title: string }[] = [];
+async function getTitles(): Promise<{ title: string; url: string }[]> {
+  const response = await axios.get('https://blog.samaltman.com/');
+  const $ = cheerio.load(response.data);
+  
+  return $('.post-title h2 a').map((_, element) => ({
+    title: $(element).text(),
+    url: $(element).attr('href') || '',
+  })).get();
+}
 
-    postTitle.each((i, title) => {
-        const links = $(title).find("a");
-        links.each((i, link) => {
-            const url = $(link).attr("href");
-            if (url) {
-                const title = $(link).text();
-                const linkObj = {
-                    url,
-                    title
-                }
-                linksArr.push(linkObj);
-            }
-        });
-    })
-    return linksArr;
-};
+async function getEssay(url: string, title: string): Promise<SamEssay> {
+  const response = await axios.get(url);
+  const $ = cheerio.load(response.data);
+  
+  const content = $('.posthaven-post-body').text().trim();
+  
+  return {
+    title,
+    url,
+    content,
+  };
+}
 
 (async () => {
-    const titles = await getTitles(); 
-    console.log(titles); 
-})();
+  const links = await getTitles();
+  
+  let essays: SamEssay[] = [];
+  
+  for (let i = 0; i < links.length; i++) {
+    const essay = await getEssay(links[i].url, links[i].title);
+    essays.push(essay);
+    console.log(`Scraped: ${essay.title}`); // Log progress
+  }
+
+  console.log(JSON.stringify(essays, null, 2)); // Print the essays array after the loop
+})().catch(error => console.error('An error occurred:', error));
